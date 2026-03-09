@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(taskkill //F //IM uvicorn.exe)",
+      "Bash(rm -f /c/Users/User/Desktop/agent_registry/gateway.db)"
+    ]
+  }
+}
