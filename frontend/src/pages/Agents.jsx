@@ -16,18 +16,66 @@ import {
   TextField,
   Typography,
   FormControlLabel,
+  Tooltip,
+  InputAdornment,
 } from "@mui/material";
 import {
   Add,
   Delete,
   ExpandMore,
   ExpandLess,
-  Circle,
   Clear,
+  ContentCopy,
 } from "@mui/icons-material";
 import { api } from "../api";
 
-const statusColor = { online: "success", offline: "default", error: "error", unknown: "warning" };
+const STATUS_COLORS = {
+  online: "#22c55e",
+  offline: "#71717a",
+  error: "#ef4444",
+  unknown: "#f59e0b",
+};
+
+const STATUS_BG = {
+  online: "rgba(34,197,94,0.1)",
+  offline: "rgba(113,113,122,0.1)",
+  error: "rgba(239,68,68,0.1)",
+  unknown: "rgba(245,158,11,0.1)",
+};
+
+function StatusBadge({ status }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.75,
+        px: 1.5,
+        py: 0.4,
+        borderRadius: "20px",
+        bgcolor: STATUS_BG[status] || STATUS_BG.unknown,
+        border: "1px solid",
+        borderColor: `${STATUS_COLORS[status] || STATUS_COLORS.unknown}30`,
+      }}
+    >
+      <Box
+        sx={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          bgcolor: STATUS_COLORS[status] || STATUS_COLORS.unknown,
+          boxShadow: `0 0 6px ${STATUS_COLORS[status] || STATUS_COLORS.unknown}80`,
+        }}
+      />
+      <Typography
+        variant="caption"
+        sx={{ fontWeight: 600, color: STATUS_COLORS[status] || STATUS_COLORS.unknown, lineHeight: 1 }}
+      >
+        {status}
+      </Typography>
+    </Box>
+  );
+}
 
 export default function AgentsPage({ notify }) {
   const [agents, setAgents] = useState([]);
@@ -91,14 +139,19 @@ export default function AgentsPage({ notify }) {
     );
   };
 
+  const copyGatewayUrl = (id) => {
+    navigator.clipboard.writeText(`${window.location.origin}/a2a/${id}`);
+    notify("Gateway URL copied");
+  };
+
   return (
     <Box>
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+      {/* Register Bar */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <TextField
           fullWidth
-          size="small"
-          label="Agent Base URL"
           placeholder="https://agent.example.com"
+          label="Agent Base URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && register()}
@@ -108,17 +161,18 @@ export default function AgentsPage({ notify }) {
           startIcon={<Add />}
           onClick={register}
           disabled={loading}
-          sx={{ whiteSpace: "nowrap" }}
+          sx={{ whiteSpace: "nowrap", px: 3 }}
         >
           Register
         </Button>
       </Stack>
 
+      {/* Tag Filter */}
       {allTags.length > 0 && (
-        <Box sx={{ mb: 2 }}>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap alignItems="center">
-            <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-              Filter by tag:
+        <Box sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center">
+            <Typography variant="subtitle2" sx={{ mr: 0.5 }}>
+              Filter:
             </Typography>
             {allTags.map((t) => (
               <Chip
@@ -128,13 +182,15 @@ export default function AgentsPage({ notify }) {
                 variant={filterTags.includes(t.tag) ? "filled" : "outlined"}
                 color={filterTags.includes(t.tag) ? "primary" : "default"}
                 onClick={() => toggleFilter(t.tag)}
+                sx={{ cursor: "pointer" }}
               />
             ))}
             {filterTags.length > 0 && (
               <Button
                 size="small"
-                startIcon={<Clear />}
+                startIcon={<Clear sx={{ fontSize: 14 }} />}
                 onClick={() => setFilterTags([])}
+                sx={{ color: "text.secondary" }}
               >
                 Clear
               </Button>
@@ -143,18 +199,21 @@ export default function AgentsPage({ notify }) {
         </Box>
       )}
 
+      {/* Agent Cards */}
       <Stack spacing={2}>
         {agents.map((a) => (
-          <Card key={a.id} variant="outlined">
-            <CardContent>
+          <Card
+            key={a.id}
+            sx={{
+              borderLeft: "3px solid",
+              borderLeftColor: STATUS_COLORS[a.status] || STATUS_COLORS.unknown,
+            }}
+          >
+            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
               <Stack direction="row" alignItems="center" spacing={2}>
-                <Circle
-                  sx={{ fontSize: 12 }}
-                  color={statusColor[a.status] || "disabled"}
-                />
-                <Box sx={{ flexGrow: 1 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                    <Typography variant="subtitle1" fontWeight={600}>
+                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                       {a.name || a.base_url}
                     </Typography>
                     {a.tags?.map((t) => (
@@ -165,59 +224,98 @@ export default function AgentsPage({ notify }) {
                         variant="outlined"
                         color="primary"
                         onClick={() => toggleFilter(t)}
-                        sx={{ cursor: "pointer" }}
+                        sx={{
+                          cursor: "pointer",
+                          height: 22,
+                          fontSize: "0.7rem",
+                          "& .MuiChip-label": { px: 1 },
+                        }}
                       />
                     ))}
                   </Stack>
-                  <Typography variant="body2" color="text.secondary">
-                    {a.base_url}
-                  </Typography>
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                        fontFamily: "monospace",
+                        fontSize: "0.72rem",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {`${window.location.origin}/a2a/${a.id}`}
+                    </Typography>
+                    <Tooltip title="Copy gateway URL" arrow>
+                      <IconButton size="small" onClick={() => copyGatewayUrl(a.id)} sx={{ p: 0.3 }}>
+                        <ContentCopy sx={{ fontSize: 13, color: "text.secondary" }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
                 </Box>
-                <Chip label={a.status} size="small" color={statusColor[a.status] || "default"} />
+
+                <StatusBadge status={a.status} />
+
                 <FormControlLabel
                   control={
                     <Switch checked={a.is_public} onChange={() => togglePublic(a)} size="small" />
                   }
-                  label="Public"
+                  label={<Typography variant="caption" color="text.secondary">Public</Typography>}
+                  sx={{ ml: 0 }}
                 />
                 <IconButton
                   size="small"
                   onClick={() => setExpanded(expanded === a.id ? null : a.id)}
+                  sx={{
+                    transition: "transform 0.2s ease",
+                    transform: expanded === a.id ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 >
-                  {expanded === a.id ? <ExpandLess /> : <ExpandMore />}
+                  <ExpandMore sx={{ fontSize: 20 }} />
                 </IconButton>
-                <IconButton size="small" color="error" onClick={() => setConfirmDelete(a)}>
-                  <Delete />
+                <IconButton
+                  size="small"
+                  onClick={() => setConfirmDelete(a)}
+                  sx={{ color: "error.main", opacity: 0.6, "&:hover": { opacity: 1 } }}
+                >
+                  <Delete sx={{ fontSize: 18 }} />
                 </IconButton>
               </Stack>
+
               {a.description && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                   {a.description}
                 </Typography>
               )}
               {a.last_seen && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
                   Last seen: {new Date(a.last_seen).toLocaleString()}
                 </Typography>
               )}
-              <Collapse in={expanded === a.id}>
+
+              <Collapse in={expanded === a.id} timeout={200}>
                 <AgentCardView agentId={a.id} notify={notify} onTagsChanged={load} />
               </Collapse>
             </CardContent>
           </Card>
         ))}
         {agents.length === 0 && (
-          <Typography color="text.secondary" textAlign="center">
-            No agents registered yet.
-          </Typography>
+          <Box sx={{ py: 8, textAlign: "center" }}>
+            <Typography color="text.secondary">
+              No agents registered yet.
+            </Typography>
+          </Box>
         )}
       </Stack>
 
-      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)}>
+      {/* Delete Confirm */}
+      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Delete Agent</DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography variant="body2">
             Are you sure you want to delete <strong>{confirmDelete?.name || confirmDelete?.base_url}</strong>?
+            This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -235,8 +333,8 @@ function InfoRow({ label, value }) {
   if (!value) return null;
   return (
     <Stack direction="row" spacing={1} sx={{ mb: 0.5 }}>
-      <Typography variant="body2" fontWeight={600} sx={{ minWidth: 120 }}>
-        {label}:
+      <Typography variant="body2" fontWeight={600} sx={{ minWidth: 120, color: "text.secondary" }}>
+        {label}
       </Typography>
       <Typography variant="body2">{value}</Typography>
     </Stack>
@@ -284,7 +382,16 @@ function AgentCardView({ agentId, notify, onTagsChanged }) {
   const caps = card.capabilities || {};
 
   return (
-    <Box sx={{ mt: 2, p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+    <Box
+      sx={{
+        mt: 2,
+        p: 2.5,
+        bgcolor: "rgba(255,255,255,0.02)",
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
       <InfoRow label="Name" value={card.name} />
       <InfoRow label="Description" value={card.description} />
       <InfoRow label="URL" value={card.url} />
@@ -292,15 +399,18 @@ function AgentCardView({ agentId, notify, onTagsChanged }) {
       <InfoRow label="Provider" value={card.provider?.organization} />
       <InfoRow label="Documentation" value={card.documentationUrl} />
 
-      <Box sx={{ mt: 1.5, mb: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-          <Typography variant="body2" fontWeight={600}>Tags:</Typography>
+      {/* Tags section */}
+      <Box sx={{ mt: 2, mb: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2">Tags</Typography>
           {editTags === null ? (
-            <Button size="small" onClick={startEditTags}>Edit</Button>
+            <Button size="small" onClick={startEditTags} sx={{ minWidth: 0, fontSize: "0.75rem" }}>
+              Edit
+            </Button>
           ) : (
             <>
-              <Button size="small" onClick={saveTags}>Save</Button>
-              <Button size="small" onClick={() => setEditTags(null)}>Cancel</Button>
+              <Button size="small" onClick={saveTags} color="primary" sx={{ minWidth: 0, fontSize: "0.75rem" }}>Save</Button>
+              <Button size="small" onClick={() => setEditTags(null)} sx={{ minWidth: 0, fontSize: "0.75rem", color: "text.secondary" }}>Cancel</Button>
             </>
           )}
         </Stack>
@@ -317,48 +427,53 @@ function AgentCardView({ agentId, notify, onTagsChanged }) {
             ))}
             <TextField
               size="small"
-              placeholder="Add tag"
+              placeholder="Add tag..."
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") { e.preventDefault(); addEditTag(); }
               }}
-              sx={{ width: 120 }}
+              sx={{ width: 130, "& .MuiOutlinedInput-root": { fontSize: "0.8rem" } }}
             />
           </Stack>
         ) : (
           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
             {(detail?.tags || []).length > 0
               ? detail.tags.map((t) => (
-                  <Chip key={t} label={t} size="small" variant="outlined" color="primary" />
+                  <Chip key={t} label={t} size="small" variant="outlined" color="primary"
+                    sx={{ height: 24, fontSize: "0.72rem" }}
+                  />
                 ))
-              : <Typography variant="body2" color="text.secondary">No tags</Typography>
+              : <Typography variant="caption" color="text.secondary">No tags</Typography>
             }
           </Stack>
         )}
       </Box>
 
       {Object.keys(caps).length > 0 && (
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-            Capabilities:
-          </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 0.75 }}>Capabilities</Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {caps.streaming && <Chip label="Streaming" size="small" color="info" />}
-            {caps.pushNotifications && <Chip label="Push Notifications" size="small" color="info" />}
-            {caps.stateTransitionHistory && <Chip label="State History" size="small" color="info" />}
+            {caps.streaming && <Chip label="Streaming" size="small" sx={{ bgcolor: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "none" }} />}
+            {caps.pushNotifications && <Chip label="Push Notifications" size="small" sx={{ bgcolor: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "none" }} />}
+            {caps.stateTransitionHistory && <Chip label="State History" size="small" sx={{ bgcolor: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "none" }} />}
           </Stack>
         </Box>
       )}
 
       {skills.length > 0 && (
-        <Box sx={{ mt: 1.5 }}>
-          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>
-            Skills ({skills.length}):
-          </Typography>
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 0.75 }}>Skills ({skills.length})</Typography>
           <Stack spacing={1}>
             {skills.map((s, i) => (
-              <Box key={i} sx={{ pl: 1, borderLeft: "3px solid", borderColor: "primary.light" }}>
+              <Box
+                key={i}
+                sx={{
+                  pl: 1.5,
+                  borderLeft: "2px solid",
+                  borderColor: "primary.dark",
+                }}
+              >
                 <Typography variant="body2" fontWeight={600}>
                   {s.name || s.id}
                 </Typography>
@@ -370,7 +485,9 @@ function AgentCardView({ agentId, notify, onTagsChanged }) {
                 {s.tags?.length > 0 && (
                   <Stack direction="row" spacing={0.5} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
                     {s.tags.map((t) => (
-                      <Chip key={t} label={t} size="small" variant="outlined" />
+                      <Chip key={t} label={t} size="small" variant="outlined"
+                        sx={{ height: 22, fontSize: "0.68rem", borderColor: "rgba(255,255,255,0.1)" }}
+                      />
                     ))}
                   </Stack>
                 )}
@@ -381,7 +498,9 @@ function AgentCardView({ agentId, notify, onTagsChanged }) {
       )}
 
       {card.defaultInputModes?.length > 0 && (
-        <InfoRow label="Input Modes" value={card.defaultInputModes.join(", ")} />
+        <Box sx={{ mt: 1.5 }}>
+          <InfoRow label="Input Modes" value={card.defaultInputModes.join(", ")} />
+        </Box>
       )}
       {card.defaultOutputModes?.length > 0 && (
         <InfoRow label="Output Modes" value={card.defaultOutputModes.join(", ")} />

@@ -121,7 +121,7 @@ async def _handle_proxy(
 
     body = await request.body()
     card = json.loads(agent.agent_card)
-    path = "message/stream" if stream else "message/send"
+    path = "message:stream" if stream else "message:send"
     forwarded_headers = dict(request.headers)
 
     start = time.monotonic()

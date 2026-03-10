@@ -1,7 +1,11 @@
 import re
 from datetime import datetime
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+# Sentinel to distinguish "field not sent" from "field sent as null"
+_UNSET = object()
 
 
 TAG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,19}$")
@@ -70,10 +74,12 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     username: str | None = None
     is_active: bool | None = None
     role: str | None = None
-    rate_limit: int | None = None
+    rate_limit: int | None | object = _UNSET
 
 
 class UserResponse(BaseModel):

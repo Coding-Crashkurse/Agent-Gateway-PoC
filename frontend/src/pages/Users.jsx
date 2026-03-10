@@ -18,16 +18,17 @@ import {
   Stack,
   TextField,
   Typography,
+  InputAdornment,
 } from "@mui/material";
 import {
   Add,
   Delete,
   Key,
   ExpandMore,
-  ExpandLess,
   PersonAdd,
   LinkOff,
   Speed,
+  ContentCopy,
 } from "@mui/icons-material";
 import { api } from "../api";
 
@@ -84,10 +85,10 @@ export default function UsersPage({ notify }) {
 
   return (
     <Box>
+      {/* Create User */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
         <TextField
           fullWidth
-          size="small"
           label="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -97,51 +98,108 @@ export default function UsersPage({ notify }) {
           variant="contained"
           startIcon={<PersonAdd />}
           onClick={create}
-          sx={{ whiteSpace: "nowrap" }}
+          sx={{ whiteSpace: "nowrap", px: 3 }}
         >
           Create User
         </Button>
       </Stack>
 
+      {/* User Cards */}
       <Stack spacing={2}>
         {users.map((u) => (
-          <Card key={u.id} variant="outlined">
-            <CardContent>
+          <Card key={u.id}>
+            <CardContent sx={{ p: 2.5, "&:last-child": { pb: 2.5 } }}>
               <Stack direction="row" alignItems="center" spacing={2}>
                 <Box sx={{ flexGrow: 1 }}>
                   <Typography variant="subtitle1" fontWeight={600}>
                     {u.username}
                   </Typography>
                 </Box>
-                <Chip label={u.role} size="small" color={u.role === "admin" ? "primary" : "default"} />
+
+                {/* Role badge */}
                 <Chip
-                  label={u.is_active ? "Active" : "Inactive"}
+                  label={u.role}
                   size="small"
-                  color={u.is_active ? "success" : "default"}
+                  sx={
+                    u.role === "admin"
+                      ? { bgcolor: "rgba(99,102,241,0.15)", color: "#818cf8", fontWeight: 600, border: "none" }
+                      : { bgcolor: "rgba(255,255,255,0.06)", color: "text.secondary", border: "none" }
+                  }
                 />
+
+                {/* Active status */}
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    px: 1.5,
+                    py: 0.4,
+                    borderRadius: "20px",
+                    bgcolor: u.is_active ? "rgba(34,197,94,0.1)" : "rgba(113,113,122,0.1)",
+                    border: "1px solid",
+                    borderColor: u.is_active ? "rgba(34,197,94,0.2)" : "rgba(113,113,122,0.2)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 7, height: 7, borderRadius: "50%",
+                      bgcolor: u.is_active ? "#22c55e" : "#71717a",
+                      boxShadow: u.is_active ? "0 0 6px rgba(34,197,94,0.6)" : "none",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: u.is_active ? "#22c55e" : "#71717a", lineHeight: 1 }}>
+                    {u.is_active ? "Active" : "Inactive"}
+                  </Typography>
+                </Box>
+
+                {/* Rate limit */}
                 <Chip
                   icon={<Speed sx={{ fontSize: 14 }} />}
                   label={`${u.rate_limit ?? DEFAULT_RPM} rpm`}
                   size="small"
-                  variant={u.rate_limit != null ? "filled" : "outlined"}
-                  color={u.rate_limit != null ? "warning" : "default"}
                   onClick={() => setRateLimitDialog(u)}
-                  sx={{ cursor: "pointer" }}
+                  sx={{
+                    cursor: "pointer",
+                    bgcolor: u.rate_limit != null ? "rgba(245,158,11,0.12)" : "transparent",
+                    color: u.rate_limit != null ? "#f59e0b" : "text.secondary",
+                    border: "1px solid",
+                    borderColor: u.rate_limit != null ? "rgba(245,158,11,0.25)" : "rgba(255,255,255,0.1)",
+                    fontWeight: 600,
+                    "&:hover": {
+                      bgcolor: u.rate_limit != null ? "rgba(245,158,11,0.18)" : "rgba(255,255,255,0.04)",
+                    },
+                  }}
                 />
-                <IconButton size="small" onClick={() => regenKey(u.id)} title="Regenerate API Key">
-                  <Key />
+
+                <IconButton
+                  size="small"
+                  onClick={() => regenKey(u.id)}
+                  title="Regenerate API Key"
+                  sx={{ color: "text.secondary", "&:hover": { color: "primary.light" } }}
+                >
+                  <Key sx={{ fontSize: 18 }} />
                 </IconButton>
                 <IconButton
                   size="small"
                   onClick={() => setExpanded(expanded === u.id ? null : u.id)}
+                  sx={{
+                    transition: "transform 0.2s ease",
+                    transform: expanded === u.id ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 >
-                  {expanded === u.id ? <ExpandLess /> : <ExpandMore />}
+                  <ExpandMore sx={{ fontSize: 20 }} />
                 </IconButton>
-                <IconButton size="small" color="error" onClick={() => remove(u.id)}>
-                  <Delete />
+                <IconButton
+                  size="small"
+                  onClick={() => remove(u.id)}
+                  sx={{ color: "error.main", opacity: 0.6, "&:hover": { opacity: 1 } }}
+                >
+                  <Delete sx={{ fontSize: 18 }} />
                 </IconButton>
               </Stack>
-              <Collapse in={expanded === u.id}>
+
+              <Collapse in={expanded === u.id} timeout={200}>
                 <UserAgents
                   userId={u.id}
                   allAgents={agents}
@@ -153,34 +211,43 @@ export default function UsersPage({ notify }) {
           </Card>
         ))}
         {users.length === 0 && (
-          <Typography color="text.secondary" textAlign="center">
-            No users.
-          </Typography>
+          <Box sx={{ py: 8, textAlign: "center" }}>
+            <Typography color="text.secondary">No users.</Typography>
+          </Box>
         )}
       </Stack>
 
-      <Dialog open={!!newKeyDialog} onClose={() => setNewKeyDialog(null)}>
+      {/* API Key Dialog */}
+      <Dialog open={!!newKeyDialog} onClose={() => setNewKeyDialog(null)} maxWidth="sm" fullWidth>
         <DialogTitle>API Key</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Copy this key now. It will not be shown again.
           </Typography>
           <TextField
             fullWidth
             value={newKeyDialog || ""}
-            InputProps={{ readOnly: true }}
+            InputProps={{
+              readOnly: true,
+              sx: { fontFamily: "monospace", fontSize: "0.85rem" },
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => {
+                      navigator.clipboard.writeText(newKeyDialog);
+                      notify("Copied to clipboard");
+                    }}
+                    size="small"
+                  >
+                    <ContentCopy sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
             onFocus={(e) => e.target.select()}
           />
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => {
-              navigator.clipboard.writeText(newKeyDialog);
-              notify("Copied to clipboard");
-            }}
-          >
-            Copy
-          </Button>
           <Button onClick={() => setNewKeyDialog(null)}>Close</Button>
         </DialogActions>
       </Dialog>
@@ -189,10 +256,7 @@ export default function UsersPage({ notify }) {
         <AssignDialog
           userId={assignDialog}
           agents={agents}
-          onClose={() => {
-            setAssignDialog(null);
-            load();
-          }}
+          onClose={() => { setAssignDialog(null); load(); }}
           notify={notify}
         />
       )}
@@ -200,10 +264,7 @@ export default function UsersPage({ notify }) {
       {rateLimitDialog && (
         <RateLimitDialog
           user={rateLimitDialog}
-          onClose={() => {
-            setRateLimitDialog(null);
-            load();
-          }}
+          onClose={() => { setRateLimitDialog(null); load(); }}
           notify={notify}
         />
       )}
@@ -243,12 +304,12 @@ function RateLimitDialog({ user, onClose, notify }) {
 
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Rate Limit - {user.username}</DialogTitle>
+      <DialogTitle>Rate Limit &mdash; {user.username}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Requests per minute
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={0.75} sx={{ mb: 3 }} flexWrap="wrap" useFlexGap>
           {presets.map((p) => (
             <Chip
               key={p.key}
@@ -257,16 +318,14 @@ function RateLimitDialog({ user, onClose, notify }) {
               variant={preset === p.key ? "filled" : "outlined"}
               color={preset === p.key ? "primary" : "default"}
               onClick={() => selectPreset(p)}
+              sx={{ cursor: "pointer" }}
             />
           ))}
         </Stack>
         <Stack direction="row" spacing={2} alignItems="center">
           <Slider
             value={value}
-            onChange={(_, v) => {
-              setValue(v);
-              setPreset("custom");
-            }}
+            onChange={(_, v) => { setValue(v); setPreset("custom"); }}
             min={1}
             max={300}
             step={1}
@@ -286,9 +345,7 @@ function RateLimitDialog({ user, onClose, notify }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={save}>
-          Save
-        </Button>
+        <Button variant="contained" onClick={save}>Save</Button>
       </DialogActions>
     </Dialog>
   );
@@ -315,22 +372,36 @@ function UserAgents({ userId, allAgents, notify, onAssignOpen }) {
     <Box sx={{ mt: 2 }}>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <Typography variant="subtitle2">Assigned Agents</Typography>
-        <IconButton size="small" onClick={onAssignOpen}>
-          <Add fontSize="small" />
+        <IconButton size="small" onClick={onAssignOpen} sx={{ color: "primary.light" }}>
+          <Add sx={{ fontSize: 18 }} />
         </IconButton>
       </Stack>
       {detail?.agents?.length ? (
-        <List dense>
+        <List dense sx={{ mx: -1 }}>
           {detail.agents.map((a) => (
             <ListItem
               key={a.id}
               secondaryAction={
-                <IconButton edge="end" size="small" onClick={() => removeAccess(a.id)}>
-                  <LinkOff fontSize="small" />
+                <IconButton
+                  edge="end"
+                  size="small"
+                  onClick={() => removeAccess(a.id)}
+                  sx={{ color: "text.secondary", "&:hover": { color: "error.main" } }}
+                >
+                  <LinkOff sx={{ fontSize: 16 }} />
                 </IconButton>
               }
+              sx={{
+                borderRadius: 1.5,
+                "&:hover": { bgcolor: "rgba(255,255,255,0.03)" },
+              }}
             >
-              <ListItemText primary={a.name || a.base_url} secondary={a.base_url} />
+              <ListItemText
+                primary={a.name || a.base_url}
+                secondary={a.base_url}
+                primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+                secondaryTypographyProps={{ variant: "caption", sx: { fontFamily: "monospace", fontSize: "0.7rem" } }}
+              />
             </ListItem>
           ))}
         </List>
@@ -373,12 +444,25 @@ function AssignDialog({ userId, agents, onClose, notify }) {
               button
               selected={selected.includes(a.id)}
               onClick={() => toggle(a.id)}
+              sx={{
+                borderRadius: 1.5,
+                mb: 0.5,
+                "&.Mui-selected": {
+                  bgcolor: "rgba(99,102,241,0.12)",
+                  "&:hover": { bgcolor: "rgba(99,102,241,0.18)" },
+                },
+              }}
             >
-              <ListItemText primary={a.name || a.base_url} />
+              <ListItemText
+                primary={a.name || a.base_url}
+                primaryTypographyProps={{ variant: "body2", fontWeight: 500 }}
+              />
             </ListItem>
           ))}
           {agents.length === 0 && (
-            <Typography color="text.secondary">No agents available.</Typography>
+            <Typography color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
+              No agents available.
+            </Typography>
           )}
         </List>
       </DialogContent>

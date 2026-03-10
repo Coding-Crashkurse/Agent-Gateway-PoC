@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import Agent, User, UserAgentAccess, get_db
 from app.dependencies import require_admin
@@ -98,6 +99,7 @@ async def get_user(
         select(Agent)
         .join(UserAgentAccess, UserAgentAccess.agent_id == Agent.id)
         .where(UserAgentAccess.user_id == user_id)
+        .options(selectinload(Agent.tags))
         .order_by(Agent.created_at.desc())
     )
     agents = [AgentResponse.model_validate(a) for a in agent_result.scalars().all()]
@@ -145,7 +147,8 @@ async def update_user(
         user.is_active = payload.is_active
     if payload.role is not None:
         user.role = payload.role
-    if payload.rate_limit is not None:
+    from app.models import _UNSET
+    if payload.rate_limit is not _UNSET:
         user.rate_limit = payload.rate_limit
 
     user.updated_at = datetime.now(UTC)
@@ -225,6 +228,7 @@ async def assign_agents(
         select(Agent)
         .join(UserAgentAccess, UserAgentAccess.agent_id == Agent.id)
         .where(UserAgentAccess.user_id == user_id)
+        .options(selectinload(Agent.tags))
         .order_by(Agent.created_at.desc())
     )
     return [AgentResponse.model_validate(a) for a in agent_result.scalars().all()]

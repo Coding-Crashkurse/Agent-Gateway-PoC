@@ -16,7 +16,10 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Fade,
+  InputAdornment,
 } from "@mui/material";
+import { VpnKey, Logout } from "@mui/icons-material";
 import { setApiKey, validateKey, onAuthError } from "./api";
 import DashboardPage from "./pages/Dashboard";
 import AgentsPage from "./pages/Agents";
@@ -42,29 +45,53 @@ function LoginDialog({ open, onLogin }) {
   };
 
   return (
-    <Dialog open={open}>
-      <DialogTitle>API Key</DialogTitle>
-      <DialogContent>
+    <Dialog open={open} maxWidth="xs" fullWidth>
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <Box
+          sx={{
+            width: 56, height: 56, mx: "auto", mb: 2,
+            borderRadius: "14px",
+            background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <VpnKey sx={{ fontSize: 28, color: "#fff" }} />
+        </Box>
+        <Typography variant="h6" sx={{ mb: 0.5 }}>
+          A2A Agent Gateway
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Enter your API key to continue
+        </Typography>
         <TextField
           autoFocus
           fullWidth
-          label="X-API-Key"
+          placeholder="sk-..."
           value={key}
-          onChange={(e) => {
-            setKey(e.target.value);
-            setError("");
-          }}
+          onChange={(e) => { setKey(e.target.value); setError(""); }}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           error={!!error}
           helperText={error}
-          sx={{ mt: 1 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <VpnKey sx={{ fontSize: 18, color: "text.secondary" }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ mb: 2 }}
         />
-      </DialogContent>
-      <DialogActions>
-        <Button variant="contained" onClick={submit} disabled={loading}>
-          {loading ? <CircularProgress size={20} /> : "Connect"}
+        <Button
+          variant="contained"
+          fullWidth
+          size="large"
+          onClick={submit}
+          disabled={loading}
+          sx={{ py: 1.2 }}
+        >
+          {loading ? <CircularProgress size={22} color="inherit" /> : "Connect"}
         </Button>
-      </DialogActions>
+      </Box>
     </Dialog>
   );
 }
@@ -82,7 +109,6 @@ export default function App() {
 
   useEffect(() => {
     onAuthError(logout);
-
     const saved = localStorage.getItem("apiKey");
     if (saved) {
       validateKey(saved).then((valid) => {
@@ -101,44 +127,82 @@ export default function App() {
 
   if (checking) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 10 }}>
-        <CircularProgress />
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <CircularProgress sx={{ color: "#6366f1" }} />
       </Box>
     );
   }
 
   return (
-    <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            A2A Agent Gateway
-          </Typography>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      {/* Header */}
+      <AppBar
+        position="sticky"
+        elevation={0}
+        sx={{
+          bgcolor: "rgba(15,17,23,0.8)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        <Toolbar sx={{ minHeight: "52px !important", px: { xs: 2, md: 3 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexGrow: 1 }}>
+            <Box
+              sx={{
+                width: 28, height: 28, borderRadius: "7px",
+                background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>A</Typography>
+            </Box>
+            <Typography variant="body1" sx={{ fontWeight: 600, letterSpacing: "-0.01em" }}>
+              Agent Gateway
+            </Typography>
+          </Box>
           {loggedIn && (
-            <Button color="inherit" onClick={logout}>
+            <Button
+              size="small"
+              color="inherit"
+              startIcon={<Logout sx={{ fontSize: 16 }} />}
+              onClick={logout}
+              sx={{ color: "text.secondary", "&:hover": { color: "text.primary" } }}
+            >
               Logout
             </Button>
           )}
         </Toolbar>
-      </AppBar>
 
-      <LoginDialog open={!loggedIn} onLogin={() => setLoggedIn(true)} />
-
-      {loggedIn && (
-        <>
-          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} centered>
+        {/* Tabs inside header */}
+        {loggedIn && (
+          <Box sx={{ px: { xs: 2, md: 3 } }}>
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              sx={{
+                minHeight: 40,
+                "& .MuiTab-root": { minHeight: 40, py: 0 },
+              }}
+            >
               <Tab label="Dashboard" />
               <Tab label="Agents" />
               <Tab label="Users" />
             </Tabs>
           </Box>
-          <Container sx={{ mt: 3, mb: 3 }}>
+        )}
+      </AppBar>
+
+      <LoginDialog open={!loggedIn} onLogin={() => setLoggedIn(true)} />
+
+      {loggedIn && (
+        <Fade in timeout={300}>
+          <Container maxWidth="lg" sx={{ py: 4 }}>
             {tab === 0 && <DashboardPage notify={notify} />}
             {tab === 1 && <AgentsPage notify={notify} />}
             {tab === 2 && <UsersPage notify={notify} />}
           </Container>
-        </>
+        </Fade>
       )}
 
       <Snackbar
@@ -151,12 +215,13 @@ export default function App() {
           <Alert
             severity={toast.severity}
             onClose={() => setToast(null)}
+            variant="filled"
             sx={{ whiteSpace: "pre-line", maxWidth: 600 }}
           >
             {toast.msg}
           </Alert>
         )}
       </Snackbar>
-    </>
+    </Box>
   );
 }
